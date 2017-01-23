@@ -25,8 +25,9 @@
 
 /*---------------Module Defines-----------------------------*/
 
-#define LIGHT_THRESHOLD    30 // *Choose your own thresholds* smaller at night
-#define LINE_THRESHOLD    0 // *Choose your own thresholds*
+#define LIGHT_THRESHOLD    300 // *Choose your own thresholds* smaller at night
+#define LINE_THRESHOLD    500 // *Choose your own thresholds*
+#define EDGE_THRESHOLD		600
 
 #define ONE_SEC            1000
 #define TIME_INTERVAL     ONE_SEC
@@ -95,12 +96,13 @@ void setup() {
   lineTouched = true;
   blackOut = false;
   nearLine = false;
-  TMRArd_InitTimer(0, TIME_INTERVAL);
+  TMRArd_InitTimer(0, TIME_INTERVAL);  
 }
 
 void loop() {
   checkGlobalEvents();
   checkState();
+  printLineLevel();
   switch(state) {
     case STATE_LIGHT_OFF:
 		handleLightOff();
@@ -131,20 +133,21 @@ void loop() {
 /*----------------Module Functions--------------------------*/
 void checkGlobalEvents(void) {
   if (TestTimer0Expired()) RespTimer0Expired();
-  //if (TestTimer1Expired()) RespTimer1Expired();
   if (TestForKey()) RespToKey();
 }
 
 
 void checkState(void){
-	if(TestForLightOn){
+	if(TestForLightOn()){
 		if(state!=STATE_BACK){
 			unsigned char triggerState=raptor.ReadTriggers(LINE_THRESHOLD);
+			unsigned int leftIndicator = raptor.EdgeLeft();
+			unsigned int rightIndicator = raptor.EdgeRight();
 			if(triggerState&CENTER_TRIGGER){
 				state=STATE_CENTER_DETECTED;
-			}else if(triggerState&LEFT_TRIGGER){
+			}else if(leftIndicator<EDGE_THRESHOLD){
 				state=STATE_LEFT_DETECTED;
-			}else if(triggerState&RIGHT_TRIGGER){
+			}else if(rightIndicator<EDGE_THRESHOLD){
 				state=STATE_RIGHT_DETECTED;
 			}else if(blackOut){
 				state = prevState;
@@ -162,6 +165,7 @@ void handleLightOff(void){
 		raptor.LeftMtrSpeed(0);
 		raptor.RightMtrSpeed(0);
 		blackOut = true;
+		//raptor.RGB(RGB_OFF);
 		if (checkTimer1Active()) TMRArd_StopTimer(1);
 	}
 }
@@ -171,6 +175,7 @@ void handleLeft(void){
 		turnLeft();
 		lineTouched = true;
 		blackOut = false;
+		//raptor.RGB(RGB_ORANGE);
 	}
 }
 void handleRight(void){
@@ -178,30 +183,36 @@ void handleRight(void){
 		turnRight();
 		lineTouched = true;
 		blackOut = false;
+		//raptor.RGB(RGB_YELLOW);
 	}
 }
 
 void handleCenter(void){
+	//raptor.RGB(RGB_OFF);
 	TMRArd_InitTimer(TIMER_1, TIME_INTERVAL*5);
 	moveBackward();
 	lineTouched = false;
 	state=STATE_BACK;
+	prevState = STATE_BACK;
 }
 
 void handleBack(void){
+	//raptor.RGB(RGB_BLUE);
 	if(blackOut){
 		blackOut = false;
 		TMRArd_StartTimer(TIMER_1);
 		moveBackward();
 	}
 	if (TestTimer1Expired()){
-		TMRArd_InitTimer(TIMER_1, TIME_INTERVAL*3);
+		TMRArd_InitTimer(TIMER_1, TIME_INTERVAL*4);
 		turnRight();
 		state=STATE_TURN;
+		prevState = STATE_TURN;
 	}
 }
 
 void handleTurn(void){
+	//raptor.RGB(RGB_VIOLET);
 	if(blackOut){
 		blackOut = false;
 		TMRArd_StartTimer(TIMER_1);
@@ -210,9 +221,11 @@ void handleTurn(void){
 	if(TestTimer1Expired()){
 		moveForward();
 		state=STATE_FORWARD;
+		prevState = STATE_FORWARD;
 	}
 }
 void handleForward(void){
+	//raptor.RGB(RGB_GREEN);
 	if(blackOut){
 		blackOut = false;
 		TMRArd_StartTimer(TIMER_1);
@@ -225,13 +238,13 @@ void handleForward(void){
 }
 
 void moveBackward(void) {
-  raptor.LeftMtrSpeed(-25);
-  raptor.RightMtrSpeed(-25);
+  raptor.LeftMtrSpeed(-30);
+  raptor.RightMtrSpeed(-30);
 }
 
 void moveForward(void) {
-  raptor.LeftMtrSpeed(25);
-  raptor.RightMtrSpeed(25);
+  raptor.LeftMtrSpeed(30);
+  raptor.RightMtrSpeed(30);
 }
 void turnLeft(void){
 	raptor.LeftMtrSpeed(0);
@@ -256,6 +269,7 @@ void RespTimer0Expired(void) {
     isLEDOn = true;
     raptor.RGB(RGB_WHITE);
   }
+  
 }
 
 
@@ -294,13 +308,17 @@ void printLineLevel(void){
   Serial.println(raptor.LineCenter());
   Serial.print("Left_Line=");
   Serial.println(raptor.LineLeft());
+    Serial.print("Right_Edge=");
+  Serial.println(raptor.EdgeRight());
+    Serial.print("Left_Edge=");
+  Serial.println(raptor.EdgeRight());
 }
 
 unsigned char TestForLightOn(void) {
   if((raptor.LightLevel() > LIGHT_THRESHOLD)){
-    return true;
+    return (unsigned char)true;
   }else{
-    return false; 
+    return (unsigned char)false; 
   }
 }
 
