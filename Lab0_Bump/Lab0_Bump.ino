@@ -56,7 +56,7 @@ void RespTimer0Expired(void);
 void printLightLevel(void);
 void printLineLevel(void);
 unsigned char TestTimer1Expired(void);
-unsigned char checkTimer1Active(void) 
+unsigned char checkTimer1Active(void);
 void checkState(void);
 void handleLightOff(void);
 void handleCenter(void);
