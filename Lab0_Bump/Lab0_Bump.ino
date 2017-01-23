@@ -56,23 +56,32 @@ void RespTimer0Expired(void);
 void printLightLevel(void);
 void printLineLevel(void);
 unsigned char TestTimer1Expired(void);
-void RespTimer1Expired(void);
+unsigned char checkTimer1Active(void) 
 void checkState(void);
 void handleLightOff(void);
-void handleLineOff(void);
-void handleLineOn(void);
+void handleCenter(void);
+void handleRight(void);
+void handleLeft(void);
+void handleForward(void);
+void handleBack(void);
+void handleTurn(void);
 void moveForward(void);
+void moveBackward(void);
 void turnRight(void);
 void turnLeft(void);
 /*---------------State Definitions--------------------------*/
 typedef enum {
-   STATE_LIGHT_OFF, STATE_LINE_ON, STATE_LINE_OFF, 
+   STATE_LIGHT_OFF, STATE_LEFT_DETECTED, STATE_RIGHT_DETECTED, STATE_CENTER_DETECTED, STATE_BACK, STATE_TURN, STATE_FORWARD 
 } States_t;
 
 /*---------------Module Variables---------------------------*/
 States_t state;
+States_t prevState;
 unsigned char isLEDOn;
-unsigned char onLine;
+unsigned char lineTouched;
+unsigned char blackOut;
+unsigned char nearLine;
+
 
 /*---------------Raptor Main Functions----------------*/
 
@@ -80,31 +89,39 @@ void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
   Serial.println("Hello, world!");
-  state = STATE_LINE_OFF;
+  state = STATE_FORWARD;
+  prevState = state;
   isLEDOn = false;
-  onLine = false;
+  lineTouched = true;
+  blackOut = false;
+  nearLine = false;
   TMRArd_InitTimer(0, TIME_INTERVAL);
-  TMRArd_InitTimer(1, TIME_INTERVAL);
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
   checkGlobalEvents();
   checkState();
-  //printLightLevel();
-  //printLineLevel();
-  
-
   switch(state) {
     case STATE_LIGHT_OFF:
-	  handleLightOff();
-      break;
-    case STATE_LINE_OFF:
-      handleLineOff();
-      break;
-	case STATE_LINE_ON:
-	  handleLineOn();
-	  break;
+		handleLightOff();
+		break;
+    case STATE_CENTER_DETECTED:
+		handleCenter();
+		break;
+	case STATE_RIGHT_DETECTED:
+		handleRight();
+		break;
+	case STATE_LEFT_DETECTED:
+		handleLeft();
+		break;
+	case STATE_BACK:
+		handleBack();
+		break;
+	case STATE_TURN:
+		handleTurn();
+		break;
+	case STATE_FORWARD:
+		handleForward();
     default: //Should never get into an unhandled state
       Serial.println("What is this I do not even...");
   }
@@ -118,49 +135,111 @@ void checkGlobalEvents(void) {
   if (TestForKey()) RespToKey();
 }
 
-void handleLineOn(void){
-	unsigned char triggerState=raptor.ReadTriggers(LINE_THRESHOLD);
-	if(triggerState&RIGHT_TRIGGER){
-		turnLeft();
-	}else if(triggerState&LEFT_TRIGGER){
-		turnRight();
-	}else{
-		moveForward();
-	}
-}
 
 void checkState(void){
 	if(TestForLightOn){
-		if(TestForFence&&onLine==false){
-		state=STATE_LINE_ON;
-		onLine = true;
-		}
+		if(state!=STATE_BACK){
+			unsigned char triggerState=raptor.ReadTriggers(LINE_THRESHOLD);
+			if(triggerState&CENTER_TRIGGER){
+				state=STATE_CENTER_DETECTED;
+			}else if(triggerState&LEFT_TRIGGER){
+				state=STATE_LEFT_DETECTED;
+			}else if(triggerState&RIGHT_TRIGGER){
+				state=STATE_RIGHT_DETECTED;
+			}else if(blackOut){
+				state = prevState;
+			}
+		}else if(blackOut){
+			state = prevState;
+		} 	
 	}else{
 		state = STATE_LIGHT_OFF;
 	}
 }
 
 void handleLightOff(void){
-	raptor.LeftMtrSpeed(0);
-	raptor.RightMtrSpeed(0);
+	if (blackOut==false){
+		raptor.LeftMtrSpeed(0);
+		raptor.RightMtrSpeed(0);
+		blackOut = true;
+		if (checkTimer1Active()) TMRArd_StopTimer(1);
+	}
 }
 
-void handleLineOff(void){
-	moveForward();
+void handleLeft(void){
+	if(lineTouched==false||blackOut) {
+		turnLeft();
+		lineTouched = true;
+		blackOut = false;
+	}
+}
+void handleRight(void){
+		if(lineTouched==false||blackOut) {
+		turnRight();
+		lineTouched = true;
+		blackOut = false;
+	}
 }
 
+void handleCenter(void){
+	TMRArd_InitTimer(TIMER_1, TIME_INTERVAL*5);
+	moveBackward();
+	lineTouched = false;
+	state=STATE_BACK;
+}
+
+void handleBack(void){
+	if(blackOut){
+		blackOut = false;
+		TMRArd_StartTimer(TIMER_1);
+		moveBackward();
+	}
+	if (TestTimer1Expired()){
+		TMRArd_InitTimer(TIMER_1, TIME_INTERVAL*3);
+		turnRight();
+		state=STATE_TURN;
+	}
+}
+
+void handleTurn(void){
+	if(blackOut){
+		blackOut = false;
+		TMRArd_StartTimer(TIMER_1);
+		turnRight();
+	}
+	if(TestTimer1Expired()){
+		moveForward();
+		state=STATE_FORWARD;
+	}
+}
+void handleForward(void){
+	if(blackOut){
+		blackOut = false;
+		TMRArd_StartTimer(TIMER_1);
+		moveForward();
+	}
+	if(lineTouched){
+		moveForward();
+		lineTouched = false;
+	}
+}
+
+void moveBackward(void) {
+  raptor.LeftMtrSpeed(-25);
+  raptor.RightMtrSpeed(-25);
+}
 
 void moveForward(void) {
   raptor.LeftMtrSpeed(25);
   raptor.RightMtrSpeed(25);
 }
 void turnLeft(void){
-	raptor.LeftMtrSpeed(-25);
+	raptor.LeftMtrSpeed(0);
 	raptor.RightMtrSpeed(25);
 }
 void turnRight(void){
 	raptor.LeftMtrSpeed(25);
-	raptor.RightMtrSpeed(-25);
+	raptor.RightMtrSpeed(0);
 }
 
 unsigned char TestTimer0Expired(void) {
@@ -179,22 +258,14 @@ void RespTimer0Expired(void) {
   }
 }
 
+
 unsigned char TestTimer1Expired(void) {
   return (unsigned char)(TMRArd_IsTimerExpired(TIMER_1));
 }
-/*
-void RespTimer1Expired(void) {
-  static int Time = 0;
-  TMRArd_InitTimer(TIMER_1, TIME_INTERVAL);
-  if(state==STATE_MOVE_FORWARD) {
-    handleMoveForward();
-    state=STATE_MOVE_BACKWARD;
-  } else {
-    handleMoveBackward();
-    state=STATE_MOVE_FORWARD;
-  }
+
+unsigned char checkTimer1Active(void) {
+  return (unsigned char)(TMRArd_IsTimerActive(TIMER_1));
 }
-*/
 
 unsigned char TestForKey(void) {
   unsigned char KeyEventOccurred;
@@ -223,7 +294,6 @@ void printLineLevel(void){
   Serial.println(raptor.LineCenter());
   Serial.print("Left_Line=");
   Serial.println(raptor.LineLeft());
- 
 }
 
 unsigned char TestForLightOn(void) {
@@ -251,11 +321,12 @@ void RespToLightOff(void) {
   raptor.RGB(RGB_WHITE);
 }
 
+/*
 unsigned char TestForFence(void) {
-  unsigned char triggerState=raptor.ReadTriggers(LINE_THRESHOLD);
+
   return (triggerState);
 }
-
+*/
 void RespToFence(void) {
   raptor.LeftMtrSpeed(0);
   raptor.RightMtrSpeed(0);
