@@ -83,11 +83,9 @@ unsigned char lineTouched;
 unsigned char blackOut;
 unsigned char nearLine;
 
-
 /*---------------Raptor Main Functions----------------*/
 
 void setup() {
-  // put your setup code here, to run once:
   Serial.begin(9600);
   Serial.println("Hello, world!");
   state = STATE_FORWARD;
@@ -127,7 +125,6 @@ void loop() {
     default: //Should never get into an unhandled state
       Serial.println("What is this I do not even...");
   }
-
 }
 
 /*----------------Module Functions--------------------------*/
@@ -135,7 +132,6 @@ void checkGlobalEvents(void) {
   if (TestTimer0Expired()) RespTimer0Expired();
   if (TestForKey()) RespToKey();
 }
-
 
 void checkState(void){
 	if(TestForLightOn()){
@@ -165,7 +161,6 @@ void handleLightOff(void){
 		raptor.LeftMtrSpeed(0);
 		raptor.RightMtrSpeed(0);
 		blackOut = true;
-		//raptor.RGB(RGB_OFF);
 		if (checkTimer1Active()) TMRArd_StopTimer(1);
 	}
 }
@@ -175,7 +170,6 @@ void handleLeft(void){
 		turnLeft();
 		lineTouched = true;
 		blackOut = false;
-		//raptor.RGB(RGB_ORANGE);
 	}
 }
 void handleRight(void){
@@ -183,12 +177,10 @@ void handleRight(void){
 		turnRight();
 		lineTouched = true;
 		blackOut = false;
-		//raptor.RGB(RGB_YELLOW);
 	}
 }
 
 void handleCenter(void){
-	//raptor.RGB(RGB_OFF);
 	TMRArd_InitTimer(TIMER_1, TIME_INTERVAL*5);
 	moveBackward();
 	lineTouched = false;
@@ -197,7 +189,6 @@ void handleCenter(void){
 }
 
 void handleBack(void){
-	//raptor.RGB(RGB_BLUE);
 	if(blackOut){
 		blackOut = false;
 		TMRArd_StartTimer(TIMER_1);
@@ -212,7 +203,6 @@ void handleBack(void){
 }
 
 void handleTurn(void){
-	//raptor.RGB(RGB_VIOLET);
 	if(blackOut){
 		blackOut = false;
 		TMRArd_StartTimer(TIMER_1);
@@ -225,7 +215,6 @@ void handleTurn(void){
 	}
 }
 void handleForward(void){
-	//raptor.RGB(RGB_GREEN);
 	if(blackOut){
 		blackOut = false;
 		TMRArd_StartTimer(TIMER_1);
@@ -269,7 +258,6 @@ void RespTimer0Expired(void) {
     isLEDOn = true;
     raptor.RGB(RGB_WHITE);
   }
-  
 }
 
 
@@ -308,9 +296,9 @@ void printLineLevel(void){
   Serial.println(raptor.LineCenter());
   Serial.print("Left_Line=");
   Serial.println(raptor.LineLeft());
-    Serial.print("Right_Edge=");
+  Serial.print("Right_Edge=");
   Serial.println(raptor.EdgeRight());
-    Serial.print("Left_Edge=");
+  Serial.print("Left_Edge=");
   Serial.println(raptor.EdgeRight());
 }
 
@@ -323,7 +311,6 @@ unsigned char TestForLightOn(void) {
 }
 
 void RespToLightOn(void) {
-  //raptor.Beep(TIME_INTERVAL,TIME_INTERVAL);
   raptor.RGB(RGB_WHITE);
 }
 
@@ -334,18 +321,3 @@ unsigned char TestForLightOff(void) {
     return false; 
   }
 }
-
-void RespToLightOff(void) {
-  raptor.RGB(RGB_WHITE);
-}
-
-/*
-unsigned char TestForFence(void) {
-
-  return (triggerState);
-}
-*/
-void RespToFence(void) {
-  raptor.LeftMtrSpeed(0);
-  raptor.RightMtrSpeed(0);
-  }

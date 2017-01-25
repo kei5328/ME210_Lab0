@@ -88,12 +88,10 @@ void setup() {
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
   checkGlobalEvents();
   checkState();
   //printLightLevel();
   //printLineLevel();
-  
 
   switch(state) {
     case STATE_LIGHT_OFF:
@@ -114,7 +112,6 @@ void loop() {
 /*----------------Module Functions--------------------------*/
 void checkGlobalEvents(void) {
   if (TestTimer0Expired()) RespTimer0Expired();
-  //if (TestTimer1Expired()) RespTimer1Expired();
   if (TestForKey()) RespToKey();
 }
 
@@ -182,20 +179,6 @@ void RespTimer0Expired(void) {
 unsigned char TestTimer1Expired(void) {
   return (unsigned char)(TMRArd_IsTimerExpired(TIMER_1));
 }
-/*
-void RespTimer1Expired(void) {
-  static int Time = 0;
-  TMRArd_InitTimer(TIMER_1, TIME_INTERVAL);
-  if(state==STATE_MOVE_FORWARD) {
-    handleMoveForward();
-    state=STATE_MOVE_BACKWARD;
-  } else {
-    handleMoveBackward();
-    state=STATE_MOVE_FORWARD;
-  }
-}
-*/
-
 unsigned char TestForKey(void) {
   unsigned char KeyEventOccurred;
   KeyEventOccurred = Serial.available();
@@ -204,7 +187,6 @@ unsigned char TestForKey(void) {
 
 void RespToKey(void) {
   unsigned char theKey;
-  
   theKey = Serial.read();
   Serial.print(theKey);
   Serial.print(", ASCII=");
@@ -215,7 +197,6 @@ void printLightLevel(void){
   Serial.print("Light Level=");
   Serial.println(raptor.LightLevel());
 }
-
 void printLineLevel(void){
   Serial.print("\n Right_Line=");
   Serial.println(raptor.LineRight());
@@ -223,7 +204,6 @@ void printLineLevel(void){
   Serial.println(raptor.LineCenter());
   Serial.print("Left_Line=");
   Serial.println(raptor.LineLeft());
- 
 }
 
 unsigned char TestForLightOn(void) {
@@ -234,11 +214,6 @@ unsigned char TestForLightOn(void) {
   }
 }
 
-void RespToLightOn(void) {
-  //raptor.Beep(TIME_INTERVAL,TIME_INTERVAL);
-  raptor.RGB(RGB_WHITE);
-}
-
 unsigned char TestForLightOff(void) {
     if((raptor.LightLevel() < LIGHT_THRESHOLD)){
     return true;
@@ -246,17 +221,3 @@ unsigned char TestForLightOff(void) {
     return false; 
   }
 }
-
-void RespToLightOff(void) {
-  raptor.RGB(RGB_WHITE);
-}
-
-unsigned char TestForFence(void) {
-  unsigned char triggerState=raptor.ReadTriggers(LINE_THRESHOLD);
-  return (triggerState);
-}
-
-void RespToFence(void) {
-  raptor.LeftMtrSpeed(0);
-  raptor.RightMtrSpeed(0);
-  }
